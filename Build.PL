@@ -8,7 +8,11 @@ my $builder = Module::Build->new(
     dist_author         => 'Nathaniel K Smith <nate@summersault.com>',
     dist_version_from   => 'lib/CGI/Application/Plugin/ValidateQuery.pm',
     build_requires => {
-        'Test::More' => 0,
+        'Test::More'       => 0,
+        'CGI::Application' => 3.31,
+    },
+    requires       => {
+        'Params::Validate' => 0,
     },
     add_to_cleanup      => [ 'CGI-Application-Plugin-ValidateQuery-*' ],
 );

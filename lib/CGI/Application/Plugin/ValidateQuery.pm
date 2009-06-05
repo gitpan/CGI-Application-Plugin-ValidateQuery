@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 0.99_1
+Version 0.99_2
 
 =cut
 
-our $VERSION = '0.99_1';
+our $VERSION = '0.99_2';
 
 our @EXPORT_OK = qw(
     validate_query_config

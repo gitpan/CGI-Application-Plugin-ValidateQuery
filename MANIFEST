@@ -1,12 +1,10 @@
-.cvsignore
 Build.PL
 Changes
-MANIFEST
+MANIFEST			This list of files
 MANIFEST.SKIP
+META.yml
 README
-lib/CGI/Application.pm
 lib/CGI/Application/Plugin/ValidateQuery.pm
-lib/CGI/Application/Plugin/doc.ValidateQuery.pm
 t/00-load.t
 t/01-options.t
 t/02-validate.t
@@ -14,4 +12,3 @@ t/03-validate_no_logger.t
 t/04-functional_error_modes.t
 t/TestAppWithLogger.pm
 t/TestAppWithoutLogger.pm
-META.yml
