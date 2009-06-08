@@ -93,3 +93,18 @@ eval {
 like($@, qr/did not pass/, "Unsuccessful validation");
 is($t_obj->error_mode(), $t_obj->{__CAP_VALQUERY_ERROR_MODE}, 
     'Correct error mode on fail?');
+
+$t_obj = TestAppWithoutLogger->new(
+    QUERY => CGI->new(
+        '&two=two&three=123'
+    ),
+);
+
+$t_obj->validate_query({
+    one   => { type=>SCALAR, default=>410 },
+    two   => { type=>SCALAR, optional=>0  },
+    three => { type=>SCALAR, optional=>0  }
+});
+
+is($t_obj->query()->param('one'), 410, 'Default set?');
+

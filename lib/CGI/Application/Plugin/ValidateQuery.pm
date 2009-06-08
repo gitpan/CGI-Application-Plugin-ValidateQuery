@@ -18,7 +18,7 @@ Version 0.99_2
 
 =cut
 
-our $VERSION = '0.99_2';
+our $VERSION = '0.99_3';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -32,21 +32,21 @@ sub validate_query_config {
     my $self = shift;
     my @args = @_;
 
-    my $opts = ref $args[0] eq 'HASH' ? 
+    my $opts = ref $args[0] eq 'HASH' ?
         $self->_cap_hash($args[0]) : $self->_cap_hash({@args});
 
 
     $self->{__CAP_VALQUERY_ERROR_MODE} = defined $opts->{ERROR_MODE} ?
         delete $opts->{ERROR_MODE} : 'validate_query_error_mode';
-        
-    # Potential problem with this code: given log_level isn't checked. Question: 
+
+    # Potential problem with this code: given log_level isn't checked. Question:
     # Does this module /need/ to check user input that will end up being
     # checked (and croaked on) by a logging api, anyway?
     $self->{__CAP_VALQUERY_LOG_LEVEL} = defined $opts->{LOG_LEVEL} ?
         delete $opts->{LOG_LEVEL} : undef;
-    
+
     croak 'log_level given but no logging interface exists.'
-        if $self->{__CAP_VALQUERY_LOG_LEVEL} && !$self->can('log'); 
+        if $self->{__CAP_VALQUERY_LOG_LEVEL} && !$self->can('log');
 
     croak 'Invalid option(s) ('.join(', ', keys %{$opts}).') passed to'
           .'validate_query_config' if %{$opts};
@@ -59,35 +59,37 @@ sub validate_query {
     return unless @_;
 
     my @args = @_;
-    
+
     my $query_props = ref $args[0] eq 'HASH' ? $args[0] : {@args};
-   
-    # Potential problem with this code: given log level isn't checked. Question: 
+
+    # Potential problem with this code: given log level isn't checked. Question:
     # Does this module /need/ to check user input that will end up being
     # checked (and probably croaked on) by a logging api, anyway?
-    my $log_level = delete $query_props->{log_level} 
+    my $log_level = delete $query_props->{log_level}
                       || $self->{__CAP_VALQUERY_LOG_LEVEL};
-    
+
     # what's left of $query_props should be something can pass to validate().
-   
-    eval { 
+    my %validated;
+    eval {
         my @vars_array;
         for my $p ($self->query->param) {
             my @values = $self->query->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
         }
-        validate(@vars_array, $query_props); 
+        %validated = validate(@vars_array, $query_props);
     };
 
     if ($@) {
         my $log_msg = "Query Validation Failed: $@";
         if ( $log_level ) {
             $self->log->$log_level($log_msg);
-        }    
+        }
         $self->error_mode($self->{__CAP_VALQUERY_ERROR_MODE});
 
         croak $log_msg;
     }
+    use CGI;
+    $self->query(CGI->new(\%validated));
 }
 
 sub validate_query_error_mode {
@@ -104,7 +106,7 @@ __END__
 
  sub setup {
      my $self = shift;
- 
+
      $self->validate_query_config(
             # define a page to show for invalid queries, or default to
             # serving a plain, internal page
@@ -135,11 +137,11 @@ check that this exists or return essentially a generic error message to
 the user.
 
 Even if your application generates the link, it may become altered
-through tampering, malware, or other unanticipated events. 
+through tampering, malware, or other unanticipated events.
 
 This plugin uses L<Params::Validate> to validate the query string.  You
 can define your own error page to return on failure, or import a plain default
-one that we supply. 
+one that we supply.
 
 You may also define a C<log_level>, if you do, we will also log each
 validation failure at the chosen level like this:
@@ -149,7 +151,7 @@ validation failure at the chosen level like this:
 L<CGI::Application::Plugin::LogDispatch> is one plugin which implements
 this logging API.
 
-=head2 validate_query 
+=head2 validate_query
 
     $self->validate_query(
                             pet_id => SCALAR,
@@ -164,7 +166,7 @@ can import a plain error run mode--C<< validate_query_error_mode >>
 that we provide. It will be returned by default. C<< validate_query_config >>
 is usually called in C<< setup() >>, or a in a project super-class.
 
-If <log_level> is defined, it will override the the log level provided in
+If C<log_level> is defined, it will override the the log level provided in
 C<< validate_query_config >> and log a validation failure at that log
 level.
 
@@ -184,7 +186,7 @@ This module is intended to be use for simple query validation tasks,
 such as a link with  query string with a small number of arguments. For
 larger validation tasks, especially for processing for submissions using
 L< Data::FormValidator > is recommended, along with L<
-CGI::Application::ValidateRM > if you using CGI::Application. 
+CGI::Application::ValidateRM > if you using CGI::Application.
 
 =head2 FUTURE
 
@@ -195,7 +197,7 @@ This plugin does handle file upload validations, and won't in the
 future.
 
 Providing untainting is not a goal of this module, but if it's easy and
-someone else provides a patch, perhaps support will be added. Params::Validate 
+someone else provides a patch, perhaps support will be added. Params::Validate
 provides untainting functionality and may be useful.
 
 =head1 AUTHOR

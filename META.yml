@@ -1,10 +1,12 @@
---- #YAML:1.0
+---
 name: CGI-Application-Plugin-ValidateQuery
-version: 0.99_2
+version: 0.99_3
 author:
-  - Nathaniel K Smith <nate@summersault.com>
+  - 'Nathaniel K Smith <nate@summersault.com>'
 abstract: lightweight query validation for CGI::Application
 license: perl
+resources:
+  license: http://dev.perl.org/licenses/
 requires:
   Params::Validate: 0
 build_requires:
@@ -13,5 +15,8 @@ build_requires:
 provides:
   CGI::Application::Plugin::ValidateQuery:
     file: lib/CGI/Application/Plugin/ValidateQuery.pm
-    version: 0.99_2
-generated_by: Module::Build version 0.2611
+    version: 0.99_3
+generated_by: Module::Build version 0.3
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

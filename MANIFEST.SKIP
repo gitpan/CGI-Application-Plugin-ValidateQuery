@@ -20,3 +20,4 @@ docs
 .*cgisess.*
 \.bak$
 .*~$
+^_darcs
