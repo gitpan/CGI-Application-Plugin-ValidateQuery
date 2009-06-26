@@ -7,10 +7,7 @@ use FindBin '$Bin';
 use lib "$Bin/../lib";
 
 use base 'CGI::Application';
-use CGI::Application::Plugin::ValidateQuery qw(
-            validate_query_config
-            validate_query
-        );
+use CGI::Application::Plugin::ValidateQuery ':all';
 
 {
     package TestLogger; 

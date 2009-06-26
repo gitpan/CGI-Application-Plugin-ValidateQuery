@@ -21,3 +21,4 @@ docs
 \.bak$
 .*~$
 ^_darcs
+Application.pm

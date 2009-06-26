@@ -8,14 +8,8 @@ use warnings;
     use FindBin '$Bin';
     use lib "$Bin/../lib";
 
-    use Params::Validate ':all';
-
     use base 'CGI::Application';
-    use CGI::Application::Plugin::ValidateQuery qw(
-        validate_query_config
-        validate_query
-        validate_query_error_mode
-    );
+    use CGI::Application::Plugin::ValidateQuery ':all';
 
     sub setup {
         my $self = shift;

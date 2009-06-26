@@ -3,6 +3,10 @@ use lib "$Bin/../lib";
 use lib "$Bin";
 
 use Test::More 'no_plan';
+# For testing purposes we need to import all the P::V type functions
+# into the current namespace. They are already in the name space of whatever
+# cgi::app class using the plugin (and indeed could be accessed here via
+# $t_obj->SCALAR and such). 
 use Params::Validate ':all';
 
 use TestAppWithLogger;

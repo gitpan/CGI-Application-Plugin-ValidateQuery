@@ -2,13 +2,13 @@ CGI-Application-Plugin-ValidateQuery
 
 VERSION
 
-0.99_1
+0.99_4
 
 INSTALLATION
 
 To install this module, run the following commands:
 
-    perl Makefile.PL
+    perl Build.PL
     make
     make test
     make install

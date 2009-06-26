@@ -14,17 +14,19 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 0.99_2
+Version 0.99_4
 
 =cut
 
-our $VERSION = '0.99_3';
+our $VERSION = '0.99_4';
 
 our @EXPORT_OK = qw(
     validate_query_config
     validate_query
     validate_query_error_mode
 );
+push @EXPORT_OK, @Params::Validate::EXPORT_OK;
+our %EXPORT_TAGS = (all => \@EXPORT_OK);
 
 local $Params::Validate::NO_VALIDATION = 0;
 
@@ -69,16 +71,37 @@ sub validate_query {
                       || $self->{__CAP_VALQUERY_LOG_LEVEL};
 
     # what's left of $query_props should be something can pass to validate().
+    # problem: users may only want to validate a small handful of GET
+    # variables instead of the full query object (which potentially contains a
+    # large numer of POST ariables already being validated by DFV or something
+    # similar). 
+    # Given, say, a post of {one=>'one',two=>'two'} and a get of
+    # {three=>'three'} and a $query_props of just {three=>'three'} validation
+    # will fail given the unknown keys in POST.
+    # This makes sense; if someone is tampering with the query object you want
+    # to catch any extra keys. 
+    # option 1: for any key found in query not present in query_props, add to
+    # query props and mark as optional.
+    # option 2: just pass query_props and let it fail for any keys found in
+    # query no in query_props.
+
+    # Solution: pass ignore_rest_p to toggle behavior. If you know you are in
+    # a situation where you need only test one or two things in query (because
+    # the rest is delegated) you can toggle for situation one. Otherwise
+    # toggle for situation two and validate the whole query object.
+    my $ignore_rest_p = delete $query_props->{ignore_rest_p} || 0;
+
     my %validated;
     eval {
         my @vars_array;
         for my $p ($self->query->param) {
             my @values = $self->query->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
+
+            $query_props->{$p} = 0 if ($ignore_rest_p && !exists $query_props->{$p}); 
         }
         %validated = validate(@vars_array, $query_props);
     };
-
     if ($@) {
         my $log_msg = "Query Validation Failed: $@";
         if ( $log_level ) {
@@ -88,8 +111,9 @@ sub validate_query {
 
         croak $log_msg;
     }
-    use CGI;
-    $self->query(CGI->new(\%validated));
+
+    # account for default values.
+    map { $self->query->param($_ => $validated{$_}) } keys %validated;
 }
 
 sub validate_query_error_mode {
@@ -156,7 +180,8 @@ this logging API.
     $self->validate_query(
                             pet_id => SCALAR,
                             type   => { type => SCALAR, default => 'food' },
-                            log_level => 'critical', # optional
+                            log_level     => 'critical', # optional
+                            ignore_rest_p => 1
      );
 
 Validates C<< $self->query >> using L<Params::Validate>. If any required
@@ -169,6 +194,12 @@ is usually called in C<< setup() >>, or a in a project super-class.
 If C<log_level> is defined, it will override the the log level provided in
 C<< validate_query_config >> and log a validation failure at that log
 level.
+
+If ignore_rest_p is defined and true, any parameter found in $self->query not
+listed in the call to validate_query will be ignored by the check. If this is
+your only validation, don't use this; this option is here for cases where,
+say, a bunch of POST values are already being checked by something heavier
+like L<Data::FormValidator> and you just want to check one or two GET values.
 
 If you set a default, the query will be modified with the new value.
 
@@ -204,7 +235,7 @@ provides untainting functionality and may be useful.
 
 Nate Smith C<< nate@summersault.com >>, Mark Stosberg C<< mark@summersault.com >>
 
-=head1 BUGS
+=head1 BUGS & ISSUES
 
 Please report any bugs or feature requests to
 C<bug-cgi-application-plugin-validatequery at rt.cpan.org>, or through the web interface at

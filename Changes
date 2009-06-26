@@ -1,5 +1,13 @@
 Revision history for CGI-Application-Plugin-ValidateQuery
 
+0.99_4 June 26 2009
+    -Added query masking feature (ignore_rest_p flag)
+    -Now exporting Params::Validate types with :all tag
+    -General documentation updates, clean up
+
+0.99_3 June 8 2009
+    -Bugfix
+
 0.99_2  June 5 2009
         No code changes, just removed some files accidentally added to dist
 
