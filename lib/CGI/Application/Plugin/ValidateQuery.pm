@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 0.99_4
+Version 1.0
 
 =cut
 
-our $VERSION = '0.99_4';
+our $VERSION = '1.0';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -26,7 +26,10 @@ our @EXPORT_OK = qw(
     validate_query_error_mode
 );
 push @EXPORT_OK, @Params::Validate::EXPORT_OK;
-our %EXPORT_TAGS = (all => \@EXPORT_OK);
+our %EXPORT_TAGS = (
+    all   => \@EXPORT_OK, 
+    types => $Params::Validate::EXPORT_TAGS{types}
+);
 
 local $Params::Validate::NO_VALIDATION = 0;
 
@@ -37,6 +40,9 @@ sub validate_query_config {
     my $opts = ref $args[0] eq 'HASH' ?
         $self->_cap_hash($args[0]) : $self->_cap_hash({@args});
 
+    # for now, assume checking all params
+    $self->{__CAP_VALQUERY_EXTRA_OPTIONAL} = defined $opts->{EXTRA_FIELDS_OPTIONAL} ?
+        delete $opts->{EXTRA_FIELDS_OPTIONAL} : 0;
 
     $self->{__CAP_VALQUERY_ERROR_MODE} = defined $opts->{ERROR_MODE} ?
         delete $opts->{ERROR_MODE} : 'validate_query_error_mode';
@@ -85,11 +91,12 @@ sub validate_query {
     # option 2: just pass query_props and let it fail for any keys found in
     # query no in query_props.
 
-    # Solution: pass ignore_rest_p to toggle behavior. If you know you are in
+    # Solution: pass extra_fields_optional to toggle behavior. If you know you are in
     # a situation where you need only test one or two things in query (because
     # the rest is delegated) you can toggle for situation one. Otherwise
     # toggle for situation two and validate the whole query object.
-    my $ignore_rest_p = delete $query_props->{ignore_rest_p} || 0;
+    my $extra_fields_optional = delete $query_props->{extra_fields_optional} 
+        || $self->{__CAP_EXTRA_OPTIONAL};
 
     my %validated;
     eval {
@@ -98,7 +105,7 @@ sub validate_query {
             my @values = $self->query->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
 
-            $query_props->{$p} = 0 if ($ignore_rest_p && !exists $query_props->{$p}); 
+            $query_props->{$p} = 0 if ($extra_fields_optional && !exists $query_props->{$p}); 
         }
         %validated = validate(@vars_array, $query_props);
     };
@@ -128,6 +135,10 @@ __END__
 
 =head1 SYNOPSIS
 
+ use CGI::Application::ValidateQuery qw/validate_query 
+                                        validate_query_config 
+                                        :types/;
+
  sub setup {
      my $self = shift;
 
@@ -136,6 +147,7 @@ __END__
             # serving a plain, internal page
             error_mode =>  'my_invalid_query_run_mode',
             log_level  => 'notice',
+            extra_fields_optional => 0
      );
 
  }
@@ -181,7 +193,7 @@ this logging API.
                             pet_id => SCALAR,
                             type   => { type => SCALAR, default => 'food' },
                             log_level     => 'critical', # optional
-                            ignore_rest_p => 1
+                            extra_fields_optional => 1 # optional, default is 0
      );
 
 Validates C<< $self->query >> using L<Params::Validate>. If any required
@@ -195,16 +207,22 @@ If C<log_level> is defined, it will override the the log level provided in
 C<< validate_query_config >> and log a validation failure at that log
 level.
 
-If ignore_rest_p is defined and true, any parameter found in $self->query not
-listed in the call to validate_query will be ignored by the check. If this is
-your only validation, don't use this; this option is here for cases where,
-say, a bunch of POST values are already being checked by something heavier
-like L<Data::FormValidator> and you just want to check one or two GET values.
+If extra_fields_optional is defined and true, any parameter found in $self->query not
+listed in the call to validate_query will be ignored by the check (in other
+words, it will be included in the profile passed to L<Params::Validate> but
+marked only as optional). If this is all the validation you're performing,
+don't use this; this option is here for cases where, for example, a bunch of
+POST values are already being checked by something heavier like
+L<Data::FormValidator> and you just want to check one or two GET values.
 
-If you set a default, the query will be modified with the new value.
-
+If you set a default for any parameter, the query will be modified with the new value.
 
 =head2 IMPLENTATION NOTES
+
+We re-export the constants provided in L<Params::Validate>. They can be loaded
+using either the :all tag or by including the :types tag along with the
+validate_query methods. Using :all will import everything from both this
+module and from Params::Validate.
 
 We set "local $Params::Validate::NO_VALIDATION = 0;" to be sure that
 Params::Validate works for us, even if is globally disabled.

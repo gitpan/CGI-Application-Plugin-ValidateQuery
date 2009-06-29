@@ -1,6 +1,6 @@
 ---
 name: CGI-Application-Plugin-ValidateQuery
-version: 0.99_4
+version: 1.0
 author:
   - 'Nathaniel K Smith <nate@summersault.com>'
 abstract: lightweight query validation for CGI::Application
@@ -15,7 +15,7 @@ build_requires:
 provides:
   CGI::Application::Plugin::ValidateQuery:
     file: lib/CGI/Application/Plugin/ValidateQuery.pm
-    version: 0.99_4
+    version: 1.0
 generated_by: Module::Build version 0.3
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

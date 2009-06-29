@@ -10,6 +10,6 @@ t/01-options.t
 t/02-validate.t
 t/03-validate_no_logger.t
 t/04-functional_error_modes.t
-t/05-ignore_rest_p.t
+t/05-extra_fields_optional.t
 t/TestAppWithLogger.pm
 t/TestAppWithoutLogger.pm

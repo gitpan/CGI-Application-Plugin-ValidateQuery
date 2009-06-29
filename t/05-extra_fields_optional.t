@@ -31,7 +31,7 @@ my @before_p = sort $t_obj->query->param;
 eval {
     my $output = $t_obj->validate_query({
         one => { type=>SCALAR, optional=>0 },
-        ignore_rest_p => 1,
+        extra_fields_optional => 1,
     });
 };
 my @after_p = sort $t_obj->query->param;
