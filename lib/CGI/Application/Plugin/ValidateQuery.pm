@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 1.0
+Version 1.0.1
 
 =cut
 
-our $VERSION = '1.0';
+our $VERSION = '1.0.1';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -135,9 +135,9 @@ __END__
 
 =head1 SYNOPSIS
 
- use CGI::Application::ValidateQuery qw/validate_query 
+ use CGI::Application::ValidateQuery qw(validate_query 
                                         validate_query_config 
-                                        :types/;
+                                        :types);
 
  sub setup {
      my $self = shift;
@@ -145,9 +145,9 @@ __END__
      $self->validate_query_config(
             # define a page to show for invalid queries, or default to
             # serving a plain, internal page
-            error_mode =>  'my_invalid_query_run_mode',
-            log_level  => 'notice',
-            extra_fields_optional => 0
+            error_mode            => 'my_invalid_query_run_mode',
+            log_level             => 'notice',
+            extra_fields_optional => 0,
      );
 
  }
@@ -190,10 +190,10 @@ this logging API.
 =head2 validate_query
 
     $self->validate_query(
-                            pet_id => SCALAR,
-                            type   => { type => SCALAR, default => 'food' },
-                            log_level     => 'critical', # optional
-                            extra_fields_optional => 1 # optional, default is 0
+        pet_id                => SCALAR,
+        type                  => { type => SCALAR, default => 'food' },
+        log_level             => 'critical', # optional
+        extra_fields_optional => 1 # optional, default is 0
      );
 
 Validates C<< $self->query >> using L<Params::Validate>. If any required
@@ -234,19 +234,19 @@ triggered. Other uses of error_mode() should continue to work as normal.
 This module is intended to be use for simple query validation tasks,
 such as a link with  query string with a small number of arguments. For
 larger validation tasks, especially for processing for submissions using
-L< Data::FormValidator > is recommended, along with L<
-CGI::Application::ValidateRM > if you using CGI::Application.
+L<Data::FormValidator> is recommended, along with 
+L<CGI::Application::Plugin::ValidateRM>if you using L<CGI::Application>.
 
 =head2 FUTURE
 
 This concept could be extended to all check values set through
-$self->param(), or through $ENV{PATH_INFO} .
+C<< $self->param() >>, or through C<< $ENV{PATH_INFO} >>.
 
-This plugin does handle file upload validations, and won't in the
+This plugin does not handle file upload validations, and won't in the
 future.
 
 Providing untainting is not a goal of this module, but if it's easy and
-someone else provides a patch, perhaps support will be added. Params::Validate
+if someone else provides a patch, perhaps support will be added. L<Params::Validate>
 provides untainting functionality and may be useful.
 
 =head1 AUTHOR
