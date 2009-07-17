@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 1.0.1
+Version 1.0.2
 
 =cut
 
-our $VERSION = '1.0.1';
+our $VERSION = '1.0.2';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -27,7 +27,7 @@ our @EXPORT_OK = qw(
 );
 push @EXPORT_OK, @Params::Validate::EXPORT_OK;
 our %EXPORT_TAGS = (
-    all   => \@EXPORT_OK, 
+    all   => \@EXPORT_OK,
     types => $Params::Validate::EXPORT_TAGS{types}
 );
 
@@ -76,16 +76,16 @@ sub validate_query {
     my $log_level = delete $query_props->{log_level}
                       || $self->{__CAP_VALQUERY_LOG_LEVEL};
 
-    # what's left of $query_props should be something can pass to validate().
+    # what's left of $query_props should be something we can pass to validate().
     # problem: users may only want to validate a small handful of GET
     # variables instead of the full query object (which potentially contains a
     # large numer of POST ariables already being validated by DFV or something
-    # similar). 
+    # similar).
     # Given, say, a post of {one=>'one',two=>'two'} and a get of
     # {three=>'three'} and a $query_props of just {three=>'three'} validation
     # will fail given the unknown keys in POST.
     # This makes sense; if someone is tampering with the query object you want
-    # to catch any extra keys. 
+    # to catch any extra keys.
     # option 1: for any key found in query not present in query_props, add to
     # query props and mark as optional.
     # option 2: just pass query_props and let it fail for any keys found in
@@ -95,7 +95,7 @@ sub validate_query {
     # a situation where you need only test one or two things in query (because
     # the rest is delegated) you can toggle for situation one. Otherwise
     # toggle for situation two and validate the whole query object.
-    my $extra_fields_optional = delete $query_props->{extra_fields_optional} 
+    my $extra_fields_optional = delete $query_props->{extra_fields_optional}
         || $self->{__CAP_EXTRA_OPTIONAL};
 
     my %validated;
@@ -105,7 +105,7 @@ sub validate_query {
             my @values = $self->query->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
 
-            $query_props->{$p} = 0 if ($extra_fields_optional && !exists $query_props->{$p}); 
+            $query_props->{$p} = 0 if ($extra_fields_optional && !exists $query_props->{$p});
         }
         %validated = validate(@vars_array, $query_props);
     };
@@ -121,6 +121,8 @@ sub validate_query {
 
     # account for default values.
     map { $self->query->param($_ => $validated{$_}) } keys %validated;
+
+    return %validated;
 }
 
 sub validate_query_error_mode {
@@ -135,8 +137,8 @@ __END__
 
 =head1 SYNOPSIS
 
- use CGI::Application::ValidateQuery qw(validate_query 
-                                        validate_query_config 
+ use CGI::Application::ValidateQuery qw(validate_query
+                                        validate_query_config
                                         :types);
 
  sub setup {
@@ -189,7 +191,7 @@ this logging API.
 
 =head2 validate_query
 
-    $self->validate_query(
+    my %validated = $self->validate_query(
         pet_id                => SCALAR,
         type                  => { type => SCALAR, default => 'food' },
         log_level             => 'critical', # optional
@@ -217,6 +219,8 @@ L<Data::FormValidator> and you just want to check one or two GET values.
 
 If you set a default for any parameter, the query will be modified with the new value.
 
+The function, like Params::Validate::validate, returns the validated data.
+
 =head2 IMPLENTATION NOTES
 
 We re-export the constants provided in L<Params::Validate>. They can be loaded
@@ -234,7 +238,7 @@ triggered. Other uses of error_mode() should continue to work as normal.
 This module is intended to be use for simple query validation tasks,
 such as a link with  query string with a small number of arguments. For
 larger validation tasks, especially for processing for submissions using
-L<Data::FormValidator> is recommended, along with 
+L<Data::FormValidator> is recommended, along with
 L<CGI::Application::Plugin::ValidateRM>if you using L<CGI::Application>.
 
 =head2 FUTURE

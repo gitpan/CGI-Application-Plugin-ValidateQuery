@@ -36,8 +36,9 @@ $t_obj->validate_query_config(
     error_mode => 'fail_mode'
 );
 
+my %return_hash;
 eval {
-    $t_obj->validate_query({
+    %return_hash = $t_obj->validate_query({
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -49,6 +50,9 @@ eval {
     });
 };
 is($@, '', "Successful validation");
+my %vars = $t_obj->query->Vars;
+
+is_deeply(\%vars, \%return_hash, 'Proper return?');
 
 eval {
     $t_obj->validate_query({
