@@ -36,6 +36,8 @@ $t_obj->validate_query_config(
     error_mode => 'fail_mode'
 );
 
+my %before_q_vars = $t_obj->query->Vars;
+
 my %return_hash;
 eval {
     %return_hash = $t_obj->validate_query({
@@ -50,9 +52,20 @@ eval {
     });
 };
 is($@, '', "Successful validation");
-my %vars = $t_obj->query->Vars;
+my %after_q_vars = $t_obj->query->Vars;
 
-is_deeply(\%vars, \%return_hash, 'Proper return?');
+is_deeply(\%before_q_vars, \%after_q_vars, 'Query not clobbered?');
+
+# Don't use query->Vars to compare with %return_hash.
+# Below we ensure multivalued field shows up as hashref,
+# rather than as a null separated string.
+my %query_hash;
+for my $p ($t_obj->query->param) {
+    my @vals = $t_obj->query->param($p);
+    $query_hash{$p} = scalar @vals > 1 ? \@vals : $vals[0];
+}
+
+is_deeply(\%query_hash, \%return_hash, 'Proper return?');
 
 eval {
     $t_obj->validate_query({
@@ -116,6 +129,3 @@ $t_obj->validate_query({
 });
 
 is($t_obj->query()->param('one'), 410, 'Default set?');
-
-
-

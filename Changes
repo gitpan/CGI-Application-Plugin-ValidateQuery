@@ -1,5 +1,8 @@
 Revision history for CGI-Application-Plugin-ValidateQuery
 
+1.0.3 October 21 2009
+    -Bugfixes for multivalued parameters from matt@summersault.com
+
 1.0.1 July 01 2009
     -Doc update (from markstos)
 

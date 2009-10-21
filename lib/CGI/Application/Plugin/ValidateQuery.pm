@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 1.0.2
+Version 1.0.3
 
 =cut
 
-our $VERSION = '1.0.2';
+our $VERSION = '1.0.3';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -119,8 +119,9 @@ sub validate_query {
         croak $log_msg;
     }
 
-    # account for default values.
-    map { $self->query->param($_ => $validated{$_}) } keys %validated;
+    # Account for default values, and use the expanded -name / -value
+    # syntax for CGI to ensure proper handling of multivalued fields.
+    map { $self->query->param( -name=>$_ , -value=>$validated{$_} ) } keys %validated;
 
     return %validated;
 }
