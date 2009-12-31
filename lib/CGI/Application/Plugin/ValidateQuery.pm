@@ -14,11 +14,11 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 1.0.3
+Version 1.0.4
 
 =cut
 
-our $VERSION = '1.0.3';
+our $VERSION = '1.0.4';
 
 our @EXPORT_OK = qw(
     validate_query_config
@@ -39,6 +39,10 @@ sub validate_query_config {
 
     my $opts = ref $args[0] eq 'HASH' ?
         $self->_cap_hash($args[0]) : $self->_cap_hash({@args});
+
+    # assume query
+    $self->{__CAP_APP_PARAMS} = defined $opts->{APP_PARAMS} ?
+        delete $opts->{APP_PARAMS} : 0;
 
     # for now, assume checking all params
     $self->{__CAP_VALQUERY_EXTRA_OPTIONAL} = defined $opts->{EXTRA_FIELDS_OPTIONAL} ?
@@ -98,11 +102,15 @@ sub validate_query {
     my $extra_fields_optional = delete $query_props->{extra_fields_optional}
         || $self->{__CAP_EXTRA_OPTIONAL};
 
+    my $app_params = delete $query_props->{app_params} || $self->{__CAP_APP_PARAMS};
+
+    my $param_obj = $app_params ? $self : $self->query;
+
     my %validated;
     eval {
         my @vars_array;
-        for my $p ($self->query->param) {
-            my @values = $self->query->param($p);
+        for my $p ($param_obj->param) {
+            my @values = $param_obj->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
 
             $query_props->{$p} = 0 if ($extra_fields_optional && !exists $query_props->{$p});
@@ -121,7 +129,11 @@ sub validate_query {
 
     # Account for default values, and use the expanded -name / -value
     # syntax for CGI to ensure proper handling of multivalued fields.
-    map { $self->query->param( -name=>$_ , -value=>$validated{$_} ) } keys %validated;
+    my $sub = $app_params
+        ? sub { my $p = shift; $param_obj->param($p, $validated{$p}) }
+        : sub { my $p = shift; $param_obj->param(-name=>$p, -value=>$validated{$p}) };
+
+    map { $sub->($_) } keys %validated;
 
     return %validated;
 }
@@ -150,7 +162,7 @@ __END__
             # serving a plain, internal page
             error_mode            => 'my_invalid_query_run_mode',
             log_level             => 'notice',
-            extra_fields_optional => 0,
+            extra_fields_optional => 0
      );
 
  }
@@ -192,11 +204,12 @@ this logging API.
 
 =head2 validate_query
 
-    my %validated = $self->validate_query(
-        pet_id                => SCALAR,
-        type                  => { type => SCALAR, default => 'food' },
-        log_level             => 'critical', # optional
-        extra_fields_optional => 1 # optional, default is 0
+    $self->validate_query(
+                            pet_id      => SCALAR,
+                            type        => { type => SCALAR, default => 'food' },
+                            log_level   => 'critical',   # optional
+                            app_params  => 0,
+                            extra_fields_optional => 1 # optional, default is 0
      );
 
 Validates C<< $self->query >> using L<Params::Validate>. If any required
@@ -218,9 +231,12 @@ don't use this; this option is here for cases where, for example, a bunch of
 POST values are already being checked by something heavier like
 L<Data::FormValidator> and you just want to check one or two GET values.
 
-If you set a default for any parameter, the query will be modified with the new value.
+If app_params is set to 1, C<< $self >> itself is validated (via
+C<< $self->param >>). Note that you will almost certainly want to set
+extra_fields_optional when using this flag. Its default is 0.
 
-The function, like Params::Validate::validate, returns the validated data.
+If you set a default for any parameter, the query will be modified with that
+value should that parameter be missing.
 
 =head2 IMPLENTATION NOTES
 
@@ -239,13 +255,13 @@ triggered. Other uses of error_mode() should continue to work as normal.
 This module is intended to be use for simple query validation tasks,
 such as a link with  query string with a small number of arguments. For
 larger validation tasks, especially for processing for submissions using
-L<Data::FormValidator> is recommended, along with
-L<CGI::Application::Plugin::ValidateRM>if you using L<CGI::Application>.
+L<Data::FormValidator> is recommended, along with L<CGI::Application::ValidateRM>
+if you're using L<CGI::Application>.
 
 =head2 FUTURE
 
 This concept could be extended to all check values set through
-C<< $self->param() >>, or through C<< $ENV{PATH_INFO} >>.
+C<< $ENV{PATH_INFO} >>.
 
 This plugin does not handle file upload validations, and won't in the
 future.
