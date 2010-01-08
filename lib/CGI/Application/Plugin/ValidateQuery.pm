@@ -14,14 +14,15 @@ CGI::Application::Plugin::ValidateQuery - lightweight query validation for CGI::
 
 =head1 VERSION
 
-Version 1.0.4
+Version 1.0.5
 
 =cut
 
-our $VERSION = '1.0.4';
+our $VERSION = '1.0.5';
 
 our @EXPORT_OK = qw(
     validate_query_config
+    validate_app_params
     validate_query
     validate_query_error_mode
 );
@@ -35,25 +36,23 @@ local $Params::Validate::NO_VALIDATION = 0;
 
 sub validate_query_config {
     my $self = shift;
-    my @args = @_;
 
-    my $opts = ref $args[0] eq 'HASH' ?
-        $self->_cap_hash($args[0]) : $self->_cap_hash({@args});
+    my $opts = {@_};
 
-    # assume query
-    $self->{__CAP_APP_PARAMS} = defined $opts->{APP_PARAMS} ?
-        delete $opts->{APP_PARAMS} : 0;
+    $opts = {map {uc $_ => $opts->{$_}} keys %$opts};
 
-    # for now, assume checking all params
-    $self->{__CAP_VALQUERY_EXTRA_OPTIONAL} = defined $opts->{EXTRA_FIELDS_OPTIONAL} ?
-        delete $opts->{EXTRA_FIELDS_OPTIONAL} : 0;
+    # for now, default checking all params. First config arg is legacy.
+    if ( defined $opts->{EXTRA_FIELDS_OPTIONAL} or defined $opts->{ALLOW_EXTRA} ) {
+        delete $opts->{EXTRA_FIELDS_OPTIONAL};
+        delete $opts->{ALLOW_EXTRA};
+        $self->{__CAP_VALQUERY_ALLOW_EXTRA} = 1;
+    } else {
+        $self->{__CAP_VALQUERY_ALLOW_EXTRA} = 0;
+    }
 
     $self->{__CAP_VALQUERY_ERROR_MODE} = defined $opts->{ERROR_MODE} ?
         delete $opts->{ERROR_MODE} : 'validate_query_error_mode';
 
-    # Potential problem with this code: given log_level isn't checked. Question:
-    # Does this module /need/ to check user input that will end up being
-    # checked (and croaked on) by a logging api, anyway?
     $self->{__CAP_VALQUERY_LOG_LEVEL} = defined $opts->{LOG_LEVEL} ?
         delete $opts->{LOG_LEVEL} : undef;
 
@@ -62,7 +61,19 @@ sub validate_query_config {
 
     croak 'Invalid option(s) ('.join(', ', keys %{$opts}).') passed to'
           .'validate_query_config' if %{$opts};
+}
 
+sub validate_app_params {
+    my $self = shift;
+
+    return unless @_;
+
+    my $query_props = {@_};
+
+    $query_props->{allow_extra} = 1;
+    $query_props->{app_params}  = 1;
+
+    return _validate($self, $query_props);
 }
 
 sub validate_query {
@@ -70,41 +81,36 @@ sub validate_query {
 
     return unless @_;
 
-    my @args = @_;
+    return _validate($self, {@_});
+}
 
-    my $query_props = ref $args[0] eq 'HASH' ? $args[0] : {@args};
 
-    # Potential problem with this code: given log level isn't checked. Question:
-    # Does this module /need/ to check user input that will end up being
-    # checked (and probably croaked on) by a logging api, anyway?
+sub _validate {
+    my $self        = shift;
+    my $query_props = shift;
+
     my $log_level = delete $query_props->{log_level}
-                      || $self->{__CAP_VALQUERY_LOG_LEVEL};
+                    || $self->{__CAP_VALQUERY_LOG_LEVEL};
 
-    # what's left of $query_props should be something we can pass to validate().
-    # problem: users may only want to validate a small handful of GET
-    # variables instead of the full query object (which potentially contains a
-    # large numer of POST ariables already being validated by DFV or something
-    # similar).
-    # Given, say, a post of {one=>'one',two=>'two'} and a get of
-    # {three=>'three'} and a $query_props of just {three=>'three'} validation
-    # will fail given the unknown keys in POST.
-    # This makes sense; if someone is tampering with the query object you want
-    # to catch any extra keys.
-    # option 1: for any key found in query not present in query_props, add to
-    # query props and mark as optional.
-    # option 2: just pass query_props and let it fail for any keys found in
-    # query no in query_props.
+    my $allow_extra = delete($query_props->{extra_fields_optional})
+                      || delete($query_props->{allow_extra})
+                      || $self->{__CAP_ALLOW_EXTRA};
 
-    # Solution: pass extra_fields_optional to toggle behavior. If you know you are in
-    # a situation where you need only test one or two things in query (because
-    # the rest is delegated) you can toggle for situation one. Otherwise
-    # toggle for situation two and validate the whole query object.
-    my $extra_fields_optional = delete $query_props->{extra_fields_optional}
-        || $self->{__CAP_EXTRA_OPTIONAL};
-
-    my $app_params = delete $query_props->{app_params} || $self->{__CAP_APP_PARAMS};
+    my $app_params = delete $query_props->{app_params};
 
     my $param_obj = $app_params ? $self : $self->query;
+
+    # filter query_props to support quick regex syntax
+    # turns
+        # key => qr/$regex/
+    # into
+        # key => { regex => qr/$regex/ }
+    for my $key (keys %$query_props) {
+        my $val = $query_props->{$key};
+        if ( ref $val eq 'Regexp' ) {
+            $query_props->{$key} = { regex => $val, type => SCALAR };
+        }
+    }
 
     my %validated;
     eval {
@@ -112,16 +118,16 @@ sub validate_query {
         for my $p ($param_obj->param) {
             my @values = $param_obj->param($p);
             push @vars_array, ($p, scalar @values > 1 ? \@values : $values[0]);
-
-            $query_props->{$p} = 0 if ($extra_fields_optional && !exists $query_props->{$p});
         }
-        %validated = validate(@vars_array, $query_props);
+        %validated = validate_with(
+            params      => \@vars_array,
+            spec        => $query_props,
+            allow_extra => $allow_extra
+        );
     };
     if ($@) {
         my $log_msg = "Query Validation Failed: $@";
-        if ( $log_level ) {
-            $self->log->$log_level($log_msg);
-        }
+        $self->log->$log_level($log_msg) if $log_level;
         $self->error_mode($self->{__CAP_VALQUERY_ERROR_MODE});
 
         croak $log_msg;
@@ -148,9 +154,11 @@ sub validate_query_error_mode {
 
 __END__
 
+
 =head1 SYNOPSIS
 
  use CGI::Application::ValidateQuery qw(validate_query
+                                        validate_app_params
                                         validate_query_config
                                         :types);
 
@@ -162,12 +170,23 @@ __END__
             # serving a plain, internal page
             error_mode            => 'my_invalid_query_run_mode',
             log_level             => 'notice',
-            extra_fields_optional => 0
+            allow_extra           => 0
      );
 
  }
 
  sub my_run_mode {
+    my $self = shift;
+
+    # validate select options stored in the app itself
+    $self->validate_app_params(
+        user_id  => qr/\A[a-zA-Z]\z/,
+    );
+
+    # move on...
+ }
+
+ sub another_run_mode {
     my $self = shift;
 
     # validate the query and return a standard error page on failure.
@@ -190,9 +209,9 @@ the user.
 Even if your application generates the link, it may become altered
 through tampering, malware, or other unanticipated events.
 
-This plugin uses L<Params::Validate> to validate the query string.  You
-can define your own error page to return on failure, or import a plain default
-one that we supply.
+This plugin uses L<Params::Validate> to validate either a query object or
+values stored in a CGI::Application object. You can define your own error page
+to return on failure, or import a plain default one that we supply.
 
 You may also define a C<log_level>, if you do, we will also log each
 validation failure at the chosen level like this:
@@ -205,11 +224,10 @@ this logging API.
 =head2 validate_query
 
     $self->validate_query(
-                            pet_id      => SCALAR,
-                            type        => { type => SCALAR, default => 'food' },
-                            log_level   => 'critical',   # optional
-                            app_params  => 0,
-                            extra_fields_optional => 1 # optional, default is 0
+                            pet_id      => qr/\A\d+\z/, # implies regex and type=>SCALAR
+                            species     => { type => SCALAR, default => 'lizard' },
+                            log_level   => 'critical',  # optional
+                            allow_extra => 1  # optional, default is 0
      );
 
 Validates C<< $self->query >> using L<Params::Validate>. If any required
@@ -223,7 +241,7 @@ If C<log_level> is defined, it will override the the log level provided in
 C<< validate_query_config >> and log a validation failure at that log
 level.
 
-If extra_fields_optional is defined and true, any parameter found in $self->query not
+If allow_extra is defined and true, any parameter found in $self->query not
 listed in the call to validate_query will be ignored by the check (in other
 words, it will be included in the profile passed to L<Params::Validate> but
 marked only as optional). If this is all the validation you're performing,
@@ -231,12 +249,26 @@ don't use this; this option is here for cases where, for example, a bunch of
 POST values are already being checked by something heavier like
 L<Data::FormValidator> and you just want to check one or two GET values.
 
-If app_params is set to 1, C<< $self >> itself is validated (via
-C<< $self->param >>). Note that you will almost certainly want to set
-extra_fields_optional when using this flag. Its default is 0.
-
 If you set a default for any parameter, the query will be modified with that
 value should that parameter be missing.
+
+=head2 validate_app_params
+
+    $self->validate_app_params(
+        user_id  => qr/\A[a-zA-Z]\z/,
+    );
+
+Behaves like C<< validate_query >> with these exceptions:
+
+=over
+
+=item * allow_extra is set to true
+
+=item * items specified are looked for and validated using C<$self->param>
+          instead of C<$self->query->param>.
+
+=back
+
 
 =head2 IMPLENTATION NOTES
 
@@ -253,10 +285,10 @@ To alter the application flow when validation fails, we set
 triggered. Other uses of error_mode() should continue to work as normal.
 
 This module is intended to be use for simple query validation tasks,
-such as a link with  query string with a small number of arguments. For
-larger validation tasks, especially for processing for submissions using
-L<Data::FormValidator> is recommended, along with L<CGI::Application::ValidateRM>
-if you're using L<CGI::Application>.
+such as a link with  query string with a small number of arguments or a page
+with a few dispatched args. For larger validation tasks, especially for
+processing form submissions using L<Data::FormValidator> is recommended, along
+with L<CGI::Application::ValidateRM> if you're using L<CGI::Application>.
 
 =head2 FUTURE
 

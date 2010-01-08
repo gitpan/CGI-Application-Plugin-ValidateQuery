@@ -30,15 +30,32 @@ $t_obj->validate_query_config(
     error_mode => 'fail_mode',
 );
 
-my %before_q_vars = $t_obj->query->Vars;
-eval {
-    my $output = $t_obj->validate_query({
-        one => { type=>SCALAR, optional=>0 },
-        extra_fields_optional => 1,
-    });
-};
-my %after_q_vars = $t_obj->query->Vars;
+{
+    my %before_q_vars = $t_obj->query->Vars;
+    eval {
+        my $output = $t_obj->validate_query(
+            one => { type=>SCALAR, optional=>0 },
+            extra_fields_optional => 1,
+        );
+    };
+    my %after_q_vars = $t_obj->query->Vars;
 
-is_deeply(\%before_q_vars, \%after_q_vars, 'Query not clobbered?');
+    is_deeply(\%before_q_vars, \%after_q_vars, 'Query not clobbered?');
 
-unlike($@, qr/not listed in the validation options/, "Properly ignored rest of query?");
+    unlike($@, qr/not listed in the validation options/, "Properly ignored rest of query?");
+}
+
+{
+    my %before_q_vars = $t_obj->query->Vars;
+    eval {
+        my $output = $t_obj->validate_query(
+            one => { type=>SCALAR, optional=>0 },
+            allow_extra => 1,
+        );
+    };
+    my %after_q_vars = $t_obj->query->Vars;
+
+    is_deeply(\%before_q_vars, \%after_q_vars, 'Query not clobbered?');
+
+    unlike($@, qr/not listed in the validation options/, "Properly ignored rest of query?");
+}

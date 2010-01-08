@@ -10,6 +10,7 @@ use base 'CGI::Application';
 use CGI::Application::Plugin::ValidateQuery qw(
             validate_query_config
             validate_query
+            validate_app_params
 );
 
 sub setup {

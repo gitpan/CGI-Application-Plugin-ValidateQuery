@@ -40,7 +40,7 @@ my %before_q_vars = $t_obj->query->Vars;
 
 my %return_hash;
 eval {
-    %return_hash = $t_obj->validate_query({
+    %return_hash = $t_obj->validate_query(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -49,7 +49,7 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 }
-    });
+    );
 };
 is($@, '', "Successful validation");
 my %after_q_vars = $t_obj->query->Vars;
@@ -68,7 +68,7 @@ for my $p ($t_obj->query->param) {
 is_deeply(\%query_hash, \%return_hash, 'Proper return?');
 
 eval {
-    $t_obj->validate_query({
+    $t_obj->validate_query(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -77,7 +77,7 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 }
-    });
+    );
 };
 like($@, qr/did not pass/, "Unsuccessful validation");
 is($t_obj->error_mode(), $t_obj->{__CAP_VALQUERY_ERROR_MODE}, 
@@ -87,7 +87,7 @@ is($t_obj->error_mode(), $t_obj->{__CAP_VALQUERY_ERROR_MODE},
 $t_obj->validate_query_config();
 
 eval {
-    $t_obj->validate_query({
+    $t_obj->validate_query(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -96,12 +96,12 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 }
-    });
+    );
 };
 is($@, '', "Successful validation");
 
 eval {
-    $t_obj->validate_query({
+    $t_obj->validate_query(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -110,7 +110,7 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 }
-    });
+    );
 };
 like($@, qr/did not pass/, "Unsuccessful validation");
 is($t_obj->error_mode(), $t_obj->{__CAP_VALQUERY_ERROR_MODE}, 
@@ -122,10 +122,10 @@ $t_obj = TestAppWithLogger->new(
     ),
 );
 
-$t_obj->validate_query({
+$t_obj->validate_query(
     one   => { type=>SCALAR, default=>410 },
     two   => { type=>SCALAR, optional=>0  },
     three => { type=>SCALAR, optional=>0  }
-});
+);
 
 is($t_obj->query()->param('one'), 410, 'Default set?');

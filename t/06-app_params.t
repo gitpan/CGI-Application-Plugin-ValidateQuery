@@ -39,11 +39,10 @@ is(@$value, @test, 'Reality check: Query properly set?');
 
 $t_obj->validate_query_config(
     error_mode => 'fail_mode',
-    app_params => 1
 );
 
 eval {
-    $t_obj->validate_query({
+    $t_obj->validate_app_params(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -52,12 +51,12 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 },
-    });
+    );
 };
 is($@, '', "Successful validation");
 
 eval {
-    my $output = $t_obj->validate_query({
+    my $output = $t_obj->validate_app_params(
         one   => { type=>SCALAR, optional=>0   },
         two   => { type=>SCALAR, optional=>0   },
         three => { type=>SCALAR, optional=>0,
@@ -66,7 +65,7 @@ eval {
                    regex=>qr/^[\d\w]+$/        },
         five  => { type=>SCALAR, optional=>0   },
         six   => { type=>ARRAYREF, optional=>0 }
-    });
+    );
 };
 like($@, qr/did not pass/, "Unsuccessful validation");
 is($t_obj->error_mode(), $t_obj->{__CAP_VALQUERY_ERROR_MODE},
@@ -79,12 +78,11 @@ $t_obj = TestAppWithoutLogger->new(
     }
 );
 
-$t_obj->validate_query({
+$t_obj->validate_app_params(
     one   => { type=>SCALAR, default=>410 },
     two   => { type=>SCALAR, optional=>0  },
     three => { type=>SCALAR, optional=>0  },
-    app_params => 1
-});
+);
 
 is($t_obj->param('one'), 410, 'Default set?');
 

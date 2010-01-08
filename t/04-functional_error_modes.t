@@ -25,11 +25,11 @@ use warnings;
         my $self = shift;
         use CGI;
         $self->query(CGI->new('one=1&two=two&three=2&three=3'));
-        $self->validate_query({
+        $self->validate_query(
             one   => { type=>ARRAYREF, optional=>0 },
             two   => { type=>SCALAR,   optional=>0 },
             three => { type=>ARRAYREF, optional=>0 }
-        });
+        );
     }
 
     sub error {
